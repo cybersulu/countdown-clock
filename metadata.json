@@ -1,0 +1,8 @@
+{
+  "name": "Chronos Event Countdown & Alarms",
+  "description": "Multi-event countdown clock with precise countdowns (years to seconds), customizable alarms, dark mode, and Google authentication for allow-listed event managers.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

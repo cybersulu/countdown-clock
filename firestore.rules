@@ -1,0 +1,109 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Security Primitives
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-\\.\\@]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isAdmin() {
+      return isVerified() && (
+        request.auth.token.email == 'pete.teoh@gmail.com' ||
+        (exists(/databases/$(database)/documents/allowlist/$(request.auth.token.email)) &&
+         get(/databases/$(database)/documents/allowlist/$(request.auth.token.email)).data.role == 'admin') ||
+        (exists(/databases/$(database)/documents/allowlist/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/allowlist/$(request.auth.uid)).data.role == 'admin')
+      );
+    }
+
+    function isAllowlisted() {
+      return isVerified() && (
+        request.auth.token.email == 'pete.teoh@gmail.com' ||
+        exists(/databases/$(database)/documents/allowlist/$(request.auth.token.email)) ||
+        exists(/databases/$(database)/documents/allowlist/$(request.auth.uid))
+      );
+    }
+
+    // Validation helper for CountdownEvent
+    function isValidCountdownEvent(data) {
+      return data.title is string &&
+             data.title.size() >= 1 &&
+             data.title.size() <= 100 &&
+             (!('description' in data) || (data.description is string && data.description.size() <= 500)) &&
+             data.targetDate is string &&
+             data.targetDate.size() <= 50 &&
+             (!('category' in data) || (data.category is string && data.category.size() <= 40)) &&
+             (!('color' in data) || (data.color is string && data.color.size() <= 30)) &&
+             data.alarmSound is string &&
+             (data.alarmSound in ['chime', 'bell', 'urgent', 'fanfare', 'zen', 'radar']) &&
+             (!('alarmVolume' in data) || (data.alarmVolume is number && data.alarmVolume >= 0 && data.alarmVolume <= 1)) &&
+             (!('alarmEnabled' in data) || data.alarmEnabled is bool) &&
+             (!('isPinned' in data) || data.isPinned is bool) &&
+             data.createdByUid is string &&
+             data.createdByUid == request.auth.uid &&
+             data.createdByEmail is string &&
+             data.createdByEmail == request.auth.token.email &&
+             data.createdAt is string &&
+             data.createdAt.size() <= 50 &&
+             (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 50));
+    }
+
+    // Countdown Events
+    match /events/{eventId} {
+      allow read: if true;
+
+      allow create: if isAllowlisted() &&
+                       isValidId(eventId) &&
+                       isValidCountdownEvent(incoming()) &&
+                       incoming().keys().hasAll(['title', 'targetDate', 'alarmSound', 'createdByUid', 'createdByEmail', 'createdAt']) &&
+                       incoming().keys().hasOnly(['title', 'description', 'targetDate', 'category', 'color', 'alarmSound', 'alarmVolume', 'alarmEnabled', 'isPinned', 'createdByUid', 'createdByEmail', 'createdAt', 'updatedAt']);
+
+      allow update: if isAllowlisted() &&
+                       isValidId(eventId) &&
+                       isValidCountdownEvent(incoming()) &&
+                       (existing().createdByUid == request.auth.uid || isAdmin()) &&
+                       incoming().createdByUid == existing().createdByUid &&
+                       incoming().createdByEmail == existing().createdByEmail &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'targetDate', 'category', 'color', 'alarmSound', 'alarmVolume', 'alarmEnabled', 'isPinned', 'updatedAt']);
+
+      allow delete: if isAllowlisted() &&
+                       isValidId(eventId) &&
+                       (existing().createdByUid == request.auth.uid || isAdmin());
+    }
+
+    // Allowlist collection
+    match /allowlist/{userId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin() && isValidId(userId);
+    }
+
+    // Connectivity verification document
+    match /test/{docId} {
+      allow read: if true;
+      allow write: if isAdmin() && isValidId(docId);
+    }
+  }
+}

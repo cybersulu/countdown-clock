@@ -1,0 +1,127 @@
+{
+  "entities": {
+    "CountdownEvent": {
+      "title": "CountdownEvent",
+      "description": "Represents an event countdown timer with customizable alarms",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "The title of the countdown event",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional notes or details for the countdown event",
+          "maxLength": 500
+        },
+        "targetDate": {
+          "type": "string",
+          "description": "Target date and time in ISO format",
+          "maxLength": 50
+        },
+        "category": {
+          "type": "string",
+          "description": "Category or tag for grouping events",
+          "maxLength": 40
+        },
+        "color": {
+          "type": "string",
+          "description": "Accent color identifier for the event card",
+          "maxLength": 30
+        },
+        "alarmSound": {
+          "type": "string",
+          "description": "Sound profile for the countdown alarm",
+          "maxLength": 30,
+          "enum": ["chime", "bell", "urgent", "fanfare", "zen", "radar"]
+        },
+        "alarmVolume": {
+          "type": "number",
+          "description": "Alarm volume from 0 to 1"
+        },
+        "alarmEnabled": {
+          "type": "boolean",
+          "description": "Whether sound alarm triggers when reaching zero"
+        },
+        "isPinned": {
+          "type": "boolean",
+          "description": "Whether the event is pinned to top hero section"
+        },
+        "createdByUid": {
+          "type": "string",
+          "description": "UID of the allow-listed Google user who created the event",
+          "maxLength": 128
+        },
+        "createdByEmail": {
+          "type": "string",
+          "description": "Google email of the user who created the event",
+          "maxLength": 128
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Creation timestamp in ISO format",
+          "maxLength": 50
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Last updated timestamp in ISO format",
+          "maxLength": 50
+        }
+      },
+      "required": ["title", "targetDate", "alarmSound", "createdByUid", "createdByEmail", "createdAt"]
+    },
+    "AllowlistUser": {
+      "title": "AllowlistUser",
+      "description": "Allow-listed user allowed to create and manage countdown events",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "description": "Google email address allowed to manage events",
+          "maxLength": 128
+        },
+        "role": {
+          "type": "string",
+          "description": "Role of the user: admin or creator",
+          "enum": ["admin", "creator"]
+        },
+        "addedBy": {
+          "type": "string",
+          "description": "Email or UID of who added this user",
+          "maxLength": 128
+        },
+        "addedAt": {
+          "type": "string",
+          "description": "ISO timestamp when allow-listed",
+          "maxLength": 50
+        }
+      },
+      "required": ["email", "role", "addedAt"]
+    }
+  },
+  "firestore": {
+    "/events/{eventId}": {
+      "schema": {
+        "$ref": "#/entities/CountdownEvent"
+      },
+      "description": "Collection of countdown events created by allow-listed users"
+    },
+    "/allowlist/{userId}": {
+      "schema": {
+        "$ref": "#/entities/AllowlistUser"
+      },
+      "description": "Allow-listed users permitted to add and manage countdown events"
+    },
+    "/test/{docId}": {
+      "schema": {
+        "title": "TestDoc",
+        "description": "Connection test doc",
+        "type": "object",
+        "properties": {}
+      },
+      "description": "Path used for verifying Firestore connectivity on boot"
+    }
+  }
+}
